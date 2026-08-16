@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pictionary Word Picker</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f5f5;
+    color: #222;
+    min-height: 100vh;
+  }
+  .app {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  h1 {
+    text-align: center;
+    margin: 4px 0 22px;
+    font-size: clamp(28px, 5vw, 46px);
+  }
+  .levels {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  button {
+    font: inherit;
+    border: 0;
+    border-radius: 14px;
+    padding: 16px 10px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .level-btn {
+    background: white;
+    border: 2px solid #d0d0d0;
+    font-weight: 700;
+    min-height: 72px;
+  }
+  .level-btn.active {
+    background: #222;
+    color: white;
+    border-color: #222;
+  }
+  .level-btn small {
+    display: block;
+    font-weight: 500;
+    margin-top: 5px;
+    opacity: .8;
+  }
+  .picker {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .slot {
+    background: white;
+    border-radius: 22px;
+    padding: 18px;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  }
+  .slot.disabled { opacity: .45; }
+  .label {
+    text-align: center;
+    font-weight: 800;
+    font-size: 20px;
+  }
+  .word {
+    text-align: center;
+    font-size: clamp(34px, 7vw, 68px);
+    font-weight: 800;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-wrap: anywhere;
+  }
+  .placeholder {
+    color: #999;
+    font-size: 28px;
+  }
+  .draw-btn {
+    width: 100%;
+    background: #222;
+    color: white;
+    font-weight: 800;
+    font-size: 22px;
+    min-height: 62px;
+  }
+  .draw-btn:active, .level-btn:active { transform: scale(.98); }
+  .controls {
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+  }
+  .controls button {
+    flex: 1;
+    background: white;
+    border: 2px solid #d0d0d0;
+    font-weight: 700;
+  }
+  .status {
+    text-align: center;
+    margin: 18px 0 0;
+    color: #666;
+    min-height: 24px;
+  }
+  .history {
+    margin-top: 24px;
+    background: white;
+    border-radius: 18px;
+    padding: 16px;
+  }
+  .history h2 { margin: 0 0 10px; font-size: 20px; }
+  .history-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .history-item {
+    background: #eee;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 14px;
+  }
+  @media (max-width: 700px) {
+    .app { padding: 14px; }
+    .levels { grid-template-columns: repeat(2, 1fr); }
+    .levels .level-btn:last-child { grid-column: span 2; }
+    .picker { grid-template-columns: 1fr; }
+    .slot { min-height: 210px; }
+  }
+.controls button{min-height:58px;font-size:18px;font-weight:800;}
+#partBadge,#nounBadge{font-size:20px;}
+.hard-badge{color:#b00020;letter-spacing:1px;}
+@media(max-width:700px){#scoreboard{grid-template-columns:1fr 1fr!important;}}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Pictionary</h1>
+<div id="scoreboard" style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:16px;">
+  <button id="teamA" style="background:white;border:3px solid #222;border-radius:16px;padding:10px;font-weight:800;">
+    TEAM A<br><span id="scoreA" style="font-size:42px;">0</span>
+  </button>
+  <button id="teamB" style="background:white;border:3px solid #ddd;border-radius:16px;padding:10px;font-weight:800;">
+    TEAM B<br><span id="scoreB" style="font-size:42px;">0</span>
+  </button>
+</div>
+
+</div>
+
+  <div class="levels" id="levels"></div>
+
+  <div class="picker">
+    <section class="slot disabled" id="partSlot">
+      <div class="label">Participle</div>
+      <div class="word placeholder" id="partWord">Not used</div><div id="partBadge" style="min-height:28px;text-align:center;font-weight:900;"></div>
+      <button class="draw-btn" id="drawPart" disabled>Draw</button>
+    </section>
+
+    <section class="slot" id="nounSlot">
+      <div class="label">Noun</div>
+      <div class="word placeholder" id="nounWord">Ready</div><div id="nounBadge" style="min-height:28px;text-align:center;font-weight:900;"></div>
+      <button class="draw-btn" id="drawNoun">Draw</button>
+    </section>
+  </div>
+
+  <div class="controls">
+      <button id="clearCorrect" style="background:#222;color:white;font-weight:800;">✓ CLEAR</button>
+      
+    <button id="drawBoth">Draw Both</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="history">
+    <h2>History</h2>
+    <div class="history-list" id="history"></div>
+  </div>
+</div>
+
+<script>
+const pools = {
+  blue: {
+    participles:["sleeping","running","jumping","swimming","walking","eating","drinking","singing","dancing","crying"],
+    nouns:["boy","girl","man","woman","baby","dog","cat","horse","rabbit","monkey","fish","frog","duck","bird","student"]
+  },
+  green: {
+    participles:["moving","flying","stopping","starting","spinning"],
+    nouns:["car","bus","train","bicycle","airplane","helicopter","boat","motorcycle","wheel"]
+  },
+  yellow: {
+    participles:["broken","opened","closed","locked","unlocked","burned","damaged","fallen"],
+    nouns:["door","window","box","chair","table","bicycle","phone","computer","toy","house","building","wall","tree","umbrella","clock"]
+  },
+  orange: {
+    participles:["melting","freezing","boiling","flowing","falling","growing","cooking"],
+    nouns:["ice","ice cream","snow","snowman","water","river","leaves","flower","egg","soup"]
+  }
+};
+
+const levels = [
+  {n:0,label:"Level 0",sub:"Nouns only",colors:[]},
+  {n:1,label:"Level 1",sub:"Blue",colors:["blue"]},
+  {n:2,label:"Level 2",sub:"Blue + Green",colors:["blue","green"]},
+  {n:3,label:"Level 3",sub:"Blue + Green + Yellow",colors:["blue","green","yellow"]},
+  {n:4,label:"Level 4",sub:"All",colors:["blue","green","yellow","orange"]}
+];
+
+/* Preselected challenging combinations. These are worth 2 points. */
+const hardCombos = new Set([
+  "swimming frog","dancing horse",
+  "flying helicopter","spinning wheel","stopping motorcycle",
+  "unlocked window","damaged computer","fallen building",
+  "melting snowman","freezing water","boiling soup",
+  "flowing river","growing flower","cooking egg"
+]);
+
+let currentLevel=0, currentTeam="A", scores={A:0,B:0}, currentChallenge=null, history=[];
+
+const levelsEl=document.getElementById("levels");
+const partSlot=document.getElementById("partSlot");
+const partWord=document.getElementById("partWord");
+const nounWord=document.getElementById("nounWord");
+const partBadge=document.getElementById("partBadge");
+const nounBadge=document.getElementById("nounBadge");
+const drawPart=document.getElementById("drawPart");
+const drawNoun=document.getElementById("drawNoun");
+const drawBoth=document.getElementById("drawBoth");
+const clearCorrect=document.getElementById("clearCorrect");
+const statusEl=document.getElementById("status");
+const scoreA=document.getElementById("scoreA");
+const scoreB=document.getElementById("scoreB");
+const teamA=document.getElementById("teamA");
+const teamB=document.getElementById("teamB");
+
+levels.forEach((level,i)=>{
+  const b=document.createElement("button");
+  b.className="level-btn"+(i===0?" active":"");
+  b.innerHTML=`${level.label}<small>${level.sub}</small>`;
+  b.onclick=()=>setLevel(level.n);
+  levelsEl.appendChild(b);
+});
+
+function setLevel(n){
+  currentLevel=n;
+  document.querySelectorAll(".level-btn").forEach((b,i)=>b.classList.toggle("active",i===n));
+  const enabled=n>=1;
+  partSlot.classList.toggle("disabled",!enabled);
+  drawPart.disabled=!enabled;
+  resetChallenge();
+  statusEl.textContent=`Level ${n} selected`;
+}
+
+function activeColors(){return levels[currentLevel].colors;}
+
+function combined(type){
+  if(currentLevel===0)
+    return [...pools.blue.nouns,...pools.green.nouns,...pools.yellow.nouns,...pools.orange.nouns];
+  return activeColors().flatMap(c=>pools[c][type]);
+}
+
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+function show(el,value){
+  el.textContent=value;
+  el.className="word";
+}
+
+function resetChallenge(){
+  currentChallenge=null;
+  partWord.textContent=currentLevel===0?"Not used":"Ready";
+  nounWord.textContent="Ready";
+  partWord.className="word placeholder";
+  nounWord.className="word placeholder";
+  partBadge.textContent="";
+  nounBadge.textContent="";
+  nounBadge.className="";
+}
+
+function updateChallenge(){
+  const p=currentLevel>=1?partWord.textContent:"";
+  const n=nounWord.textContent;
+  if(!n||n==="Ready"||(currentLevel>=1&&(!p||p==="Ready"))){
+    currentChallenge=null; return;
+  }
+  const phrase=p?`${p} ${n}`:n;
+  const hard=hardCombos.has(phrase);
+  currentChallenge={phrase,points:hard?2:1,hard};
+  nounBadge.textContent=hard?"HARD!  +2":"1 POINT";
+  nounBadge.className=hard?"hard-badge":"";
+}
+
+function drawParticiple(){
+  if(currentLevel===0)return;
+  show(partWord,pick(combined("participles")));
+  updateChallenge();
+}
+function drawNounWord(){
+  show(nounWord,pick(combined("nouns")));
+  updateChallenge();
+}
+function drawBothWords(){
+  if(currentLevel>=1)show(partWord,pick(combined("participles")));
+  show(nounWord,pick(combined("nouns")));
+  updateChallenge();
+  statusEl.textContent="New challenge!";
+}
+
+function finishTurn(){
+  if(!currentChallenge){
+    statusEl.textContent="Draw a challenge first.";
+    return;
+  }
+  const c=currentChallenge;
+  history.unshift(`${c.phrase} — ${c.hard?"+2":"+1"} — Team ${currentTeam}`);
+  history=history.slice(0,20);
+  scores[currentTeam]+=c.points;
+  renderScore();
+  renderHistory();
+  resetChallenge();
+  statusEl.textContent=`Correct! +${c.points}. Draw the next challenge.`;
+}
+
+function renderScore(){
+  scoreA.textContent=scores.A;
+  scoreB.textContent=scores.B;
+  teamA.style.borderColor=currentTeam==="A"?"#222":"#ddd";
+  teamB.style.borderColor=currentTeam==="B"?"#222":"#ddd";
+}
+
+function renderHistory(){
+  const h=document.getElementById("history");
+  if(!h)return;
+  h.innerHTML="";
+  history.forEach((item,i)=>{
+    const span=document.createElement("span");
+    span.className="history-item";
+    span.textContent=`${i+1}. ${item}`;
+    h.appendChild(span);
+  });
+}
+
+drawPart.onclick=drawParticiple;
+drawNoun.onclick=drawNounWord;
+drawBoth.onclick=drawBothWords;
+clearCorrect.onclick=finishTurn;
+teamA.onclick=()=>{currentTeam="A";renderScore();statusEl.textContent="Team A selected.";};
+teamB.onclick=()=>{currentTeam="B";renderScore();statusEl.textContent="Team B selected.";};
+
+renderScore();
+setLevel(0);
+</script>
+</body>
+</html>
